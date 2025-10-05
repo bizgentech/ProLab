@@ -1,7 +1,7 @@
-
-
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Employee } from "@/api/entities";
+import { useAuth } from "@/contexts/AuthContext";
 import { createPageUrl } from "@/utils";
 import { 
   LayoutDashboard, ClipboardList, Users, UserCog, UserCheck, 
@@ -18,31 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Assuming User and Employee models are available globally or imported from a service/model layer
-// This is a placeholder for how they might be imported if they exist in a typical project setup
-// For the purpose of this exercise, I'll assume they are available or defined here as simple mocks
-// If they are actual models, they would likely be imported from e.g., '@/models/User' or '@/services/api'
-const User = {
-  me: async () => {
-    // Mock implementation for fetching current user
-    // In a real app, this would call an API
-    return { email: "admin@example.com", name: "Admin User" };
-    // return { email: "tech@example.com", name: "Tech User" }; // Uncomment to test technician flow
-  }
-};
-
-const Employee = {
-  filter: async ({ created_by }) => {
-    // Mock implementation for filtering employees
-    // In a real app, this would call an API
-    if (created_by === "tech@example.com") {
-      return [{ id: 1, position: "Field Technician", created_by: "tech@example.com" }];
-    }
-    return [];
-  }
-};
-
 
 const navigationItems = [
   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
@@ -79,37 +54,31 @@ const navigationItems = [
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedMenus, setExpandedMenus] = useState({});
-  const [currentUser, setCurrentUser] = useState(null);
   const [employee, setEmployee] = useState(null);
   const location = useLocation();
+  const { user: currentUser, logout } = useAuth();
 
   React.useEffect(() => {
-    loadUser();
-  }, []);
+    if (currentUser) {
+      loadEmployee();
+    }
+  }, [currentUser]);
 
-  const loadUser = async () => {
+  const loadEmployee = async () => {
     try {
-      const user = await User.me();
-      setCurrentUser(user);
-      
-      // Check if user is a field technician
-      const employees = await Employee.filter({ created_by: user.email });
+      const employees = await Employee.filter({ created_by: currentUser.email });
       if (employees && employees.length > 0 && employees[0].position === "Field Technician") {
         setEmployee(employees[0]);
       }
     } catch (error) {
-      // User not logged in or API call failed
-      console.error("Failed to load user or employee data:", error);
+      console.error("Failed to load employee data:", error);
     }
   };
 
   // If user is a field technician and not already on the FieldTechApp page, redirect
   if (employee && currentPageName !== "FieldTechApp") {
-    // window.location.href = createPageUrl("FieldTechApp"); // This would cause a full page reload
-    // For a React app, consider using navigate from react-router-dom for better UX
-    // However, the outline specifically says `window.location.href`, so adhering to that.
     window.location.href = createPageUrl("FieldTechApp");
-    return null; // Don't render anything while redirecting
+    return null;
   }
 
   const toggleSubmenu = (title) => {
@@ -117,6 +86,10 @@ export default function Layout({ children, currentPageName }) {
       ...prev,
       [title]: !prev[title]
     }));
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   return (
@@ -167,16 +140,28 @@ export default function Layout({ children, currentPageName }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-[#2563EB] flex items-center justify-center text-white font-medium">
-                    {currentUser ? currentUser.name.substring(0, 2).toUpperCase() : 'AD'}
+                    {currentUser ? currentUser.name.substring(0, 2).toUpperCase() : 'U'}
                   </div>
-                  <span className="hidden lg:inline">{currentUser ? currentUser.name : 'Admin User'}</span>
+                  <span className="hidden lg:inline">{currentUser ? currentUser.name : 'User'}</span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuItem>Logout</DropdownMenuItem>
+                <DropdownMenuItem disabled className="text-xs text-[#64748B]">
+                  {currentUser?.email}
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled className="text-xs text-[#64748B] capitalize">
+                  Role: {currentUser?.role?.replace('_', ' ')}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.location.href = '/settings'}>
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={handleLogout}
+                  className="text-[#EF4444]"
+                >
+                  Logout
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -260,4 +245,3 @@ export default function Layout({ children, currentPageName }) {
     </div>
   );
 }
-

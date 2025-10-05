@@ -1,159 +1,196 @@
 import Layout from "./Layout.jsx";
-
 import Dashboard from "./Dashboard";
-
 import WorkOrders from "./WorkOrders";
-
 import FieldTechnicians from "./FieldTechnicians";
-
 import HRManagement from "./HRManagement";
-
 import Inspectors from "./Inspectors";
-
 import Samples from "./Samples";
-
 import SampleCollection from "./SampleCollection";
-
 import ChainOfCustody from "./ChainOfCustody";
-
 import LabQueue from "./LabQueue";
-
 import Testing from "./Testing";
-
 import QCReview from "./QCReview";
-
 import EngineeringReview from "./EngineeringReview";
-
 import Projects from "./Projects";
-
 import Clients from "./Clients";
-
 import Reports from "./Reports";
-
 import Invoicing from "./Invoicing";
-
 import Settings from "./Settings";
-
 import TechnicianDashboard from "./TechnicianDashboard";
-
 import FieldTechApp from "./FieldTechApp";
-
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
-
-const PAGES = {
-    
-    Dashboard: Dashboard,
-    
-    WorkOrders: WorkOrders,
-    
-    FieldTechnicians: FieldTechnicians,
-    
-    HRManagement: HRManagement,
-    
-    Inspectors: Inspectors,
-    
-    Samples: Samples,
-    
-    SampleCollection: SampleCollection,
-    
-    ChainOfCustody: ChainOfCustody,
-    
-    LabQueue: LabQueue,
-    
-    Testing: Testing,
-    
-    QCReview: QCReview,
-    
-    EngineeringReview: EngineeringReview,
-    
-    Projects: Projects,
-    
-    Clients: Clients,
-    
-    Reports: Reports,
-    
-    Invoicing: Invoicing,
-    
-    Settings: Settings,
-    
-    TechnicianDashboard: TechnicianDashboard,
-    
-    FieldTechApp: FieldTechApp,
-    
-}
-
-function _getCurrentPage(url) {
-    if (url.endsWith('/')) {
-        url = url.slice(0, -1);
-    }
-    let urlLastPart = url.split('/').pop();
-    if (urlLastPart.includes('?')) {
-        urlLastPart = urlLastPart.split('?')[0];
-    }
-
-    const pageName = Object.keys(PAGES).find(page => page.toLowerCase() === urlLastPart.toLowerCase());
-    return pageName || Object.keys(PAGES)[0];
-}
-
-// Create a wrapper component that uses useLocation inside the Router context
-function PagesContent() {
-    const location = useLocation();
-    const currentPage = _getCurrentPage(location.pathname);
-    
-    return (
-        <Layout currentPageName={currentPage}>
-            <Routes>            
-                
-                    <Route path="/" element={<Dashboard />} />
-                
-                
-                <Route path="/Dashboard" element={<Dashboard />} />
-                
-                <Route path="/WorkOrders" element={<WorkOrders />} />
-                
-                <Route path="/FieldTechnicians" element={<FieldTechnicians />} />
-                
-                <Route path="/HRManagement" element={<HRManagement />} />
-                
-                <Route path="/Inspectors" element={<Inspectors />} />
-                
-                <Route path="/Samples" element={<Samples />} />
-                
-                <Route path="/SampleCollection" element={<SampleCollection />} />
-                
-                <Route path="/ChainOfCustody" element={<ChainOfCustody />} />
-                
-                <Route path="/LabQueue" element={<LabQueue />} />
-                
-                <Route path="/Testing" element={<Testing />} />
-                
-                <Route path="/QCReview" element={<QCReview />} />
-                
-                <Route path="/EngineeringReview" element={<EngineeringReview />} />
-                
-                <Route path="/Projects" element={<Projects />} />
-                
-                <Route path="/Clients" element={<Clients />} />
-                
-                <Route path="/Reports" element={<Reports />} />
-                
-                <Route path="/Invoicing" element={<Invoicing />} />
-                
-                <Route path="/Settings" element={<Settings />} />
-                
-                <Route path="/TechnicianDashboard" element={<TechnicianDashboard />} />
-                
-                <Route path="/FieldTechApp" element={<FieldTechApp />} />
-                
-            </Routes>
-        </Layout>
-    );
-}
+import Login from "./Login";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 
 export default function Pages() {
-    return (
-        <Router>
-            <PagesContent />
-        </Router>
-    );
+  return (
+    <Router>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
+        
+        {/* Protected Routes */}
+        <Route path="/" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Dashboard">
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Dashboard" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Dashboard">
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/WorkOrders" element={
+          <ProtectedRoute>
+            <Layout currentPageName="WorkOrders">
+              <WorkOrders />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/FieldTechnicians" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Layout currentPageName="FieldTechnicians">
+              <FieldTechnicians />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/HRManagement" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Layout currentPageName="HRManagement">
+              <HRManagement />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Inspectors" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Inspectors">
+              <Inspectors />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Samples" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Samples">
+              <Samples />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/SampleCollection" element={
+          <ProtectedRoute>
+            <Layout currentPageName="SampleCollection">
+              <SampleCollection />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/ChainOfCustody" element={
+          <ProtectedRoute>
+            <Layout currentPageName="ChainOfCustody">
+              <ChainOfCustody />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/LabQueue" element={
+          <ProtectedRoute>
+            <Layout currentPageName="LabQueue">
+              <LabQueue />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Testing" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Testing">
+              <Testing />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/QCReview" element={
+          <ProtectedRoute>
+            <Layout currentPageName="QCReview">
+              <QCReview />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/EngineeringReview" element={
+          <ProtectedRoute allowedRoles={['admin', 'engineer']}>
+            <Layout currentPageName="EngineeringReview">
+              <EngineeringReview />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Projects" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Projects">
+              <Projects />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Clients" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Clients">
+              <Clients />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Reports" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Reports">
+              <Reports />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Invoicing" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Layout currentPageName="Invoicing">
+              <Invoicing />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/Settings" element={
+          <ProtectedRoute>
+            <Layout currentPageName="Settings">
+              <Settings />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/TechnicianDashboard" element={
+          <ProtectedRoute allowedRoles={['field_technician']}>
+            <Layout currentPageName="TechnicianDashboard">
+              <TechnicianDashboard />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/FieldTechApp" element={
+          <ProtectedRoute allowedRoles={['field_technician']}>
+            <FieldTechApp />
+          </ProtectedRoute>
+        } />
+        
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </Router>
+  );
 }
