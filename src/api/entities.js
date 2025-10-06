@@ -264,11 +264,60 @@ const mockInvoices = [
   }
 ];
 
-// Base Entity Class
+const mockUsers = [
+  {
+    id: 1,
+    name: "Admin User",
+    email: "admin@cti.com",
+    role: "admin",
+    status: "Active"
+  },
+  {
+    id: 2,
+    name: "Field Tech",
+    email: "tech@cti.com",
+    role: "field_technician",
+    status: "Active"
+  },
+  {
+    id: 3,
+    name: "Lab Tech",
+    email: "lab@cti.com",
+    role: "lab_technician",
+    status: "Active"
+  },
+  {
+    id: 4,
+    name: "Engineer",
+    email: "engineer@cti.com",
+    role: "engineer",
+    status: "Active"
+  }
+];
+
+// Base Entity Class with localStorage persistence
 class Entity {
-  constructor(endpoint) {
+  constructor(endpoint, initialMockData = []) {
     this.endpoint = endpoint;
-    this.mockData = [];
+    this.storageKey = `mock_${endpoint.replace(/\//g, '_')}`;
+    
+    // Load from localStorage or use initial mock data
+    const stored = localStorage.getItem(this.storageKey);
+    if (stored) {
+      try {
+        this.mockData = JSON.parse(stored);
+      } catch (e) {
+        this.mockData = [...initialMockData];
+        this.saveMockData();
+      }
+    } else {
+      this.mockData = [...initialMockData];
+      this.saveMockData();
+    }
+  }
+
+  saveMockData() {
+    localStorage.setItem(this.storageKey, JSON.stringify(this.mockData));
   }
 
   async list(sortBy = '-created_date') {
@@ -291,8 +340,13 @@ class Entity {
     // const response = await apiClient.post(this.endpoint, data);
     // return response.data;
     
-    const newItem = { id: Date.now(), created_date: new Date().toISOString().split('T')[0], ...data };
+    const newItem = { 
+      id: Date.now(), 
+      created_date: new Date().toISOString().split('T')[0], 
+      ...data 
+    };
     this.mockData.push(newItem);
+    this.saveMockData(); // Save to localStorage
     return newItem;
   }
 
@@ -303,6 +357,7 @@ class Entity {
     const index = this.mockData.findIndex(item => item.id === id);
     if (index !== -1) {
       this.mockData[index] = { ...this.mockData[index], ...data };
+      this.saveMockData(); // Save to localStorage
       return this.mockData[index];
     }
     throw new Error('Not found');
@@ -312,6 +367,7 @@ class Entity {
     // await apiClient.delete(`${this.endpoint}/${id}`);
     
     this.mockData = this.mockData.filter(item => item.id !== id);
+    this.saveMockData(); // Save to localStorage
   }
 
   async filter(params) {
@@ -324,74 +380,76 @@ class Entity {
   }
 }
 
-// Create entity instances
+// Create entity instances with initial mock data
 class WorkOrderEntity extends Entity {
   constructor() {
-    super('/work-orders');
-    this.mockData = mockWorkOrders;
+    super('/work-orders', mockWorkOrders);
   }
 }
 
 class SampleEntity extends Entity {
   constructor() {
-    super('/samples');
-    this.mockData = mockSamples;
+    super('/samples', mockSamples);
   }
 }
 
 class EmployeeEntity extends Entity {
   constructor() {
-    super('/employees');
-    this.mockData = mockEmployees;
+    super('/employees', mockEmployees);
   }
 }
 
 class LabTestEntity extends Entity {
   constructor() {
-    super('/lab-tests');
-    this.mockData = mockLabTests;
+    super('/lab-tests', mockLabTests);
   }
 }
 
 class FieldTestEntity extends Entity {
   constructor() {
-    super('/field-tests');
-    this.mockData = [];
+    super('/field-tests', []);
   }
 }
 
 class ProjectEntity extends Entity {
   constructor() {
-    super('/projects');
-    this.mockData = [];
+    super('/projects', []);
   }
 }
 
 class ClientEntity extends Entity {
   constructor() {
-    super('/clients');
-    this.mockData = [];
+    super('/clients', []);
   }
 }
 
 class InvoiceEntity extends Entity {
   constructor() {
-    super('/invoices');
-    this.mockData = mockInvoices;
+    super('/invoices', mockInvoices);
   }
 }
 
 class SampleTransferEntity extends Entity {
   constructor() {
-    super('/sample-transfers');
-    this.mockData = [];
+    super('/sample-transfers', []);
   }
 }
 
 class ActivityLogEntity extends Entity {
   constructor() {
-    super('/activity-logs');
-    this.mockData = [];
+    super('/activity-logs', []);
+  }
+}
+
+class UserEntity extends Entity {
+  constructor() {
+    super('/users', mockUsers);
+  }
+
+  async me() {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) throw new Error('Not authenticated');
+    return JSON.parse(userStr);
   }
 }
 
@@ -406,12 +464,4 @@ export const Client = new ClientEntity();
 export const Invoice = new InvoiceEntity();
 export const SampleTransfer = new SampleTransferEntity();
 export const ActivityLog = new ActivityLogEntity();
-
-// Auth
-export const User = {
-  me: async () => {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) throw new Error('Not authenticated');
-    return JSON.parse(userStr);
-  }
-};
+export const User = new UserEntity();

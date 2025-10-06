@@ -21,9 +21,10 @@ import {
 
 const navigationItems = [
   { title: "Dashboard", url: createPageUrl("Dashboard"), icon: LayoutDashboard },
+  { title: "Clients", url: createPageUrl("Clients"), icon: Building2 },
+  { title: "Projects", url: createPageUrl("Projects"), icon: FolderKanban },
   { title: "Work Orders", url: createPageUrl("WorkOrders"), icon: ClipboardList, badge: "12" },
   { title: "Field Technicians", url: createPageUrl("FieldTechnicians"), icon: Users, badge: "8" },
-  { title: "HR Management", url: createPageUrl("HRManagement"), icon: UserCog, badge: "3" },
   { title: "Inspectors", url: createPageUrl("Inspectors"), icon: UserCheck },
   { 
     title: "Samples", 
@@ -44,10 +45,9 @@ const navigationItems = [
     ]
   },
   { title: "Engineering Review", url: createPageUrl("EngineeringReview"), icon: FileCheck, badge: "8" },
-  { title: "Projects", url: createPageUrl("Projects"), icon: FolderKanban },
-  { title: "Clients", url: createPageUrl("Clients"), icon: Building2 },
   { title: "Reports & Analytics", url: createPageUrl("Reports"), icon: BarChart3 },
   { title: "Invoicing", url: createPageUrl("Invoicing"), icon: Receipt },
+  { title: "HR Management", url: createPageUrl("HRManagement"), icon: UserCog, badge: "3" },
   { title: "Settings", url: createPageUrl("Settings"), icon: Settings }
 ];
 
