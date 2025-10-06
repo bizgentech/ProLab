@@ -1,247 +1,789 @@
 import React, { useState, useEffect } from "react";
-import { WorkOrder } from "@/api/entities";
-import { Sample } from "@/api/entities";
+import { Project, Client, WorkOrder, Sample } from "@/api/entities";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { 
-  FolderKanban, Search, Plus, MapPin, TrendingUp, 
-  CheckCircle, XCircle, Clock, DollarSign 
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  FolderKanban,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Eye,
+  MapPin,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 
 export default function Projects() {
-  const [workOrders, setWorkOrders] = useState([]);
-  const [samples, setSamples] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [filteredProjects, setFilteredProjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [projectWorkOrders, setProjectWorkOrders] = useState([]);
+  const [projectSamples, setProjectSamples] = useState([]);
+
+  const [projectForm, setProjectForm] = useState({
+    project_name: "",
+    client_id: "",
+    client_name: "",
+    location: "",
+    address: "",
+    city: "",
+    state: "FL",
+    zip_code: "",
+    contract_value: "",
+    start_date: "",
+    end_date: "",
+    status: "Active",
+    description: "",
+    specifications: "",
+  });
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    const orders = await WorkOrder.list("-created_date");
-    const allSamples = await Sample.list();
-    setWorkOrders(orders);
-    setSamples(allSamples);
-  };
-
-  // Group work orders by project
-  const projectsMap = {};
-  workOrders.forEach(wo => {
-    const projectName = wo.project_name || "Unnamed Project";
-    if (!projectsMap[projectName]) {
-      projectsMap[projectName] = {
-        name: projectName,
-        client: wo.client_name,
-        workOrders: [],
-        location: wo.location
-      };
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = projects.filter((project) => {
+        const searchLower = searchTerm.toLowerCase();
+        const projectName = String(project.project_name || '').toLowerCase();
+        const clientName = String(project.client_name || '').toLowerCase();
+        const location = String(project.location || '').toLowerCase();
+        
+        return projectName.includes(searchLower) ||
+               clientName.includes(searchLower) ||
+               location.includes(searchLower);
+      });
+      setFilteredProjects(filtered);
+    } else {
+      setFilteredProjects(projects);
     }
-    projectsMap[projectName].workOrders.push(wo);
-  });
+  }, [searchTerm, projects]);
 
-  const projects = Object.values(projectsMap);
-
-  const getProjectStats = (project) => {
-    const projectSamples = samples.filter(s => 
-      project.workOrders.some(wo => wo.wo_number === s.wo_number)
-    );
-    const passedSamples = projectSamples.filter(s => s.test_results === "Pass").length;
-    const totalSamples = projectSamples.length;
-    const passRate = totalSamples > 0 ? Math.round((passedSamples / totalSamples) * 100) : 0;
-
-    const completedWOs = project.workOrders.filter(wo => wo.status === "Completed").length;
-    const totalWOs = project.workOrders.length;
-
-    return {
-      totalSamples,
-      passRate,
-      completedWOs,
-      totalWOs,
-      progress: totalWOs > 0 ? Math.round((completedWOs / totalWOs) * 100) : 0
-    };
+  const loadData = async () => {
+    try {
+      const [projectsData, clientsData] = await Promise.all([
+        Project.list(),
+        Client.list()
+      ]);
+      setProjects(projectsData || []);
+      setFilteredProjects(projectsData || []);
+      setClients(clientsData || []);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
   };
 
-  const filteredProjects = projects.filter(project =>
-    project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    project.client?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleCreateProject = () => {
+    setEditingProject(null);
+    setProjectForm({
+      project_name: "",
+      client_id: "",
+      client_name: "",
+      location: "",
+      address: "",
+      city: "",
+      state: "FL",
+      zip_code: "",
+      contract_value: "",
+      start_date: "",
+      end_date: "",
+      status: "Active",
+      description: "",
+      specifications: "",
+    });
+    setShowProjectModal(true);
+  };
+
+  const handleEditProject = (project) => {
+    setEditingProject(project);
+    setProjectForm({
+      project_name: project.project_name || "",
+      client_id: project.client_id || "",
+      client_name: project.client_name || "",
+      location: project.location || "",
+      address: project.address || "",
+      city: project.city || "",
+      state: project.state || "FL",
+      zip_code: project.zip_code || "",
+      contract_value: project.contract_value || "",
+      start_date: project.start_date || "",
+      end_date: project.end_date || "",
+      status: project.status || "Active",
+      description: project.description || "",
+      specifications: project.specifications || "",
+    });
+    setShowProjectModal(true);
+  };
+
+  const handleSaveProject = async () => {
+    try {
+      if (editingProject) {
+        await Project.update(editingProject.id, projectForm);
+      } else {
+        await Project.create(projectForm);
+      }
+      setShowProjectModal(false);
+      loadData();
+    } catch (error) {
+      console.error("Error saving project:", error);
+    }
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (confirm("Are you sure you want to delete this project?")) {
+      try {
+        await Project.delete(projectId);
+        loadData();
+      } catch (error) {
+        console.error("Error deleting project:", error);
+      }
+    }
+  };
+
+  const handleClientChange = (clientId) => {
+    const client = clients.find(c => c.id === parseInt(clientId));
+    if (client) {
+      setProjectForm({
+        ...projectForm,
+        client_id: clientId,
+        client_name: client.company_name
+      });
+    }
+  };
+
+  const handleViewDetails = async (project) => {
+    setSelectedProject(project);
+    
+    try {
+      const workOrders = await WorkOrder.filter({ project_name: project.project_name });
+      const allSamples = await Sample.list();
+      const samples = allSamples.filter(s => 
+        workOrders.some(wo => wo.wo_number === s.wo_number)
+      );
+      
+      setProjectWorkOrders(workOrders || []);
+      setProjectSamples(samples || []);
+    } catch (error) {
+      console.error("Error loading project details:", error);
+      setProjectWorkOrders([]);
+      setProjectSamples([]);
+    }
+    
+    setShowDetailsModal(true);
+  };
+
+  const calculateProgress = (project) => {
+    const workOrders = projectWorkOrders.filter(wo => 
+      wo.project_name === project.project_name
+    );
+    if (workOrders.length === 0) return 0;
+    
+    const completed = workOrders.filter(wo => wo.status === "Completed").length;
+    return Math.round((completed / workOrders.length) * 100);
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Active":
+        return "bg-[#10B981] text-white";
+      case "Completed":
+        return "bg-[#3B82F6] text-white";
+      case "On Hold":
+        return "bg-[#F59E0B] text-white";
+      default:
+        return "bg-[#64748B] text-white";
+    }
+  };
+
+  const formatCurrency = (value) => {
+    if (!value) return "$0";
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0
+    }).format(value);
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-[#1E293B]">Projects</h1>
-          <p className="text-[#64748B] mt-1">Manage all active and completed projects</p>
+          <p className="text-[#64748B] mt-1">Manage project information and progress</p>
         </div>
-        <Button className="gap-2 bg-[#2563EB] hover:bg-[#1D4ED8]">
+        <Button
+          onClick={handleCreateProject}
+          className="bg-[#2563EB] hover:bg-[#1D4ED8] gap-2"
+        >
           <Plus className="w-4 h-4" />
-          New Project
+          Add Project
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-[#64748B]">Total Projects</p>
-                <p className="text-3xl font-bold text-[#1E293B] mt-1">{projects.length}</p>
+                <p className="text-2xl font-bold text-[#1E293B]">{projects.length}</p>
               </div>
-              <div className="p-3 rounded-lg bg-[#2563EB] bg-opacity-10">
-                <FolderKanban className="w-6 h-6 text-[#2563EB]" />
-              </div>
+              <FolderKanban className="w-8 h-8 text-[#2563EB]" />
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#64748B]">Active Projects</p>
-                <p className="text-3xl font-bold text-[#10B981] mt-1">
-                  {projects.filter(p => p.workOrders.some(wo => wo.status !== "Completed")).length}
+                <p className="text-sm text-[#64748B]">Active</p>
+                <p className="text-2xl font-bold text-[#10B981]">
+                  {projects.filter((p) => p.status === "Active").length}
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-[#10B981] bg-opacity-10">
-                <TrendingUp className="w-6 h-6 text-[#10B981]" />
-              </div>
+              <TrendingUp className="w-8 h-8 text-[#10B981]" />
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#64748B]">Total Samples</p>
-                <p className="text-3xl font-bold text-[#1E293B] mt-1">{samples.length}</p>
+                <p className="text-sm text-[#64748B]">Completed</p>
+                <p className="text-2xl font-bold text-[#3B82F6]">
+                  {projects.filter((p) => p.status === "Completed").length}
+                </p>
               </div>
-              <div className="p-3 rounded-lg bg-[#F59E0B] bg-opacity-10">
-                <CheckCircle className="w-6 h-6 text-[#F59E0B]" />
-              </div>
+              <CheckCircle className="w-8 h-8 text-[#3B82F6]" />
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-[#64748B]">Avg Pass Rate</p>
-                <p className="text-3xl font-bold text-[#1E293B] mt-1">94%</p>
+                <p className="text-sm text-[#64748B]">Total Value</p>
+                <p className="text-2xl font-bold text-[#1E293B]">
+                  {formatCurrency(projects.reduce((sum, p) => sum + (parseFloat(p.contract_value) || 0), 0))}
+                </p>
               </div>
-              <div className="p-3 rounded-lg bg-[#10B981] bg-opacity-10">
-                <CheckCircle className="w-6 h-6 text-[#10B981]" />
-              </div>
+              <DollarSign className="w-8 h-8 text-[#10B981]" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
-        <Input
-          placeholder="Search projects by name or client..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+      {/* Search Bar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+            <Input
+              placeholder="Search projects by name, client, or location..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProjects.map((project, idx) => {
-          const stats = getProjectStats(project);
-          const isActive = project.workOrders.some(wo => wo.status !== "Completed");
+      {/* Projects Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Directory</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Project</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Timeline</TableHead>
+                <TableHead>Value</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProjects.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-[#64748B]">
+                    No projects found. Click "Add Project" to create one.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredProjects.map((project) => (
+                  <TableRow key={project.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-[#1E293B]">{project.project_name}</p>
+                        <p className="text-sm text-[#64748B]">{project.location}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm font-medium">{project.client_name}</p>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm text-[#64748B]">
+                        <MapPin className="w-3 h-3" />
+                        {project.city}, {project.state}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <p className="text-[#64748B]">
+                          {project.start_date ? new Date(project.start_date).toLocaleDateString() : 'N/A'}
+                        </p>
+                        {project.end_date && (
+                          <p className="text-[#64748B]">
+                            to {new Date(project.end_date).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium">{formatCurrency(project.contract_value)}</p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetails(project)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditProject(project)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteProject(project.id)}
+                          className="text-[#EF4444] hover:text-[#DC2626]"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-          return (
-            <Card key={idx} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg mb-1">{project.name}</CardTitle>
-                    <p className="text-sm text-[#64748B]">{project.client}</p>
+      {/* Create/Edit Project Modal */}
+      <Dialog open={showProjectModal} onOpenChange={setShowProjectModal}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingProject ? "Edit Project" : "Add New Project"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Project Name *</Label>
+                <Input
+                  value={projectForm.project_name}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, project_name: e.target.value })
+                  }
+                  placeholder="I-95 Expansion Project"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Client *</Label>
+                <Select
+                  value={projectForm.client_id}
+                  onValueChange={handleClientChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((client) => (
+                      <SelectItem key={client.id} value={String(client.id)}>
+                        {client.company_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Location Description</Label>
+              <Input
+                value={projectForm.location}
+                onChange={(e) =>
+                  setProjectForm({ ...projectForm, location: e.target.value })
+                }
+                placeholder="I-95 between Mile Marker 10-15"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <Input
+                value={projectForm.address}
+                onChange={(e) =>
+                  setProjectForm({ ...projectForm, address: e.target.value })
+                }
+                placeholder="Street address"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>City</Label>
+                <Input
+                  value={projectForm.city}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, city: e.target.value })
+                  }
+                  placeholder="Miami"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>State</Label>
+                <Input
+                  value={projectForm.state}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, state: e.target.value })
+                  }
+                  placeholder="FL"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>ZIP Code</Label>
+                <Input
+                  value={projectForm.zip_code}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, zip_code: e.target.value })
+                  }
+                  placeholder="33101"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input
+                  type="date"
+                  value={projectForm.start_date}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, start_date: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={projectForm.end_date}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, end_date: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Contract Value</Label>
+                <Input
+                  type="number"
+                  value={projectForm.contract_value}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, contract_value: e.target.value })
+                  }
+                  placeholder="50000"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={projectForm.status}
+                onValueChange={(value) =>
+                  setProjectForm({ ...projectForm, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="On Hold">On Hold</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={projectForm.description}
+                onChange={(e) =>
+                  setProjectForm({ ...projectForm, description: e.target.value })
+                }
+                placeholder="Project description and scope..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Specifications</Label>
+              <Textarea
+                value={projectForm.specifications}
+                onChange={(e) =>
+                  setProjectForm({ ...projectForm, specifications: e.target.value })
+                }
+                placeholder="Technical specifications, standards, requirements..."
+                rows={3}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowProjectModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveProject}
+                className="bg-[#2563EB] hover:bg-[#1D4ED8]"
+              >
+                {editingProject ? "Update Project" : "Create Project"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Project Details Modal */}
+      <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Project Details</DialogTitle>
+          </DialogHeader>
+          {selectedProject && (
+            <div className="space-y-6">
+              {/* Project Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Project Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-[#64748B]">Project Name</p>
+                      <p className="font-medium">{selectedProject.project_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#64748B]">Status</p>
+                      <Badge className={getStatusColor(selectedProject.status)}>
+                        {selectedProject.status}
+                      </Badge>
+                    </div>
                   </div>
-                  <Badge className={isActive ? "bg-[#10B981] text-white" : "bg-[#64748B] text-white"}>
-                    {isActive ? "Active" : "Completed"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-[#64748B]">
-                  <MapPin className="w-4 h-4" />
-                  <span>{project.location || "Location not specified"}</span>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#64748B]">Progress</span>
-                    <span className="font-medium">{stats.progress}%</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-[#64748B]">Client</p>
+                      <p className="font-medium">{selectedProject.client_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#64748B]">Contract Value</p>
+                      <p className="font-medium">{formatCurrency(selectedProject.contract_value)}</p>
+                    </div>
                   </div>
-                  <div className="w-full bg-[#E2E8F0] rounded-full h-2">
-                    <div 
-                      className="bg-[#2563EB] h-2 rounded-full transition-all"
-                      style={{ width: `${stats.progress}%` }}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-[#64748B]">Start Date</p>
+                      <p className="font-medium">
+                        {selectedProject.start_date ? new Date(selectedProject.start_date).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#64748B]">End Date</p>
+                      <p className="font-medium">
+                        {selectedProject.end_date ? new Date(selectedProject.end_date).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[#E2E8F0]">
                   <div>
-                    <p className="text-xs text-[#64748B]">Work Orders</p>
-                    <p className="text-lg font-bold text-[#1E293B]">
-                      {stats.completedWOs}/{stats.totalWOs}
+                    <p className="text-sm text-[#64748B]">Location</p>
+                    <p className="font-medium">{selectedProject.location}</p>
+                    <p className="text-sm text-[#64748B]">
+                      {selectedProject.address && `${selectedProject.address}, `}
+                      {selectedProject.city}, {selectedProject.state} {selectedProject.zip_code}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-xs text-[#64748B]">Pass Rate</p>
-                    <p className="text-lg font-bold text-[#10B981]">{stats.passRate}%</p>
-                  </div>
-                </div>
+                  {selectedProject.description && (
+                    <div>
+                      <p className="text-sm text-[#64748B]">Description</p>
+                      <p className="font-medium">{selectedProject.description}</p>
+                    </div>
+                  )}
+                  {selectedProject.specifications && (
+                    <div>
+                      <p className="text-sm text-[#64748B]">Specifications</p>
+                      <p className="font-medium">{selectedProject.specifications}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-[#64748B]">Total Samples</p>
-                    <p className="text-lg font-bold text-[#1E293B]">{stats.totalSamples}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#64748B]">Value</p>
-                    <p className="text-lg font-bold text-[#1E293B]">
-                      ${(stats.totalWOs * 850).toLocaleString()}
+              {/* Progress Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-[#64748B]">Work Orders</p>
+                    <p className="text-2xl font-bold text-[#1E293B]">{projectWorkOrders.length}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-[#64748B]">Samples Collected</p>
+                    <p className="text-2xl font-bold text-[#1E293B]">{projectSamples.length}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-[#64748B]">Pass Rate</p>
+                    <p className="text-2xl font-bold text-[#10B981]">
+                      {projectSamples.length > 0
+                        ? Math.round((projectSamples.filter(s => s.test_results === "Pass").length / projectSamples.length) * 100)
+                        : 0}%
                     </p>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-                <Button variant="outline" className="w-full">
-                  View Details
+              {/* Work Orders */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Work Orders ({projectWorkOrders.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {projectWorkOrders.length === 0 ? (
+                    <p className="text-[#64748B] text-sm">No work orders yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {projectWorkOrders.map((wo) => (
+                        <div
+                          key={wo.id}
+                          className="p-3 border border-[#E2E8F0] rounded-lg flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-medium text-[#2563EB]">{wo.wo_number}</p>
+                            <p className="text-sm text-[#64748B]">{wo.service_type}</p>
+                            <p className="text-xs text-[#64748B]">{wo.location}</p>
+                          </div>
+                          <Badge>{wo.status}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Samples */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Recent Samples ({projectSamples.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {projectSamples.length === 0 ? (
+                    <p className="text-[#64748B] text-sm">No samples yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {projectSamples.slice(0, 5).map((sample) => (
+                        <div
+                          key={sample.id}
+                          className="p-3 border border-[#E2E8F0] rounded-lg flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-medium text-[#2563EB]">{sample.sample_id}</p>
+                            <p className="text-sm text-[#64748B]">{sample.sample_type} - {sample.location}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge>{sample.status}</Badge>
+                            {sample.test_results === "Pass" && (
+                              <CheckCircle className="w-4 h-4 text-[#10B981]" />
+                            )}
+                            {sample.test_results === "Fail" && (
+                              <XCircle className="w-4 h-4 text-[#EF4444]" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDetailsModal(false)}
+                >
+                  Close
                 </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {filteredProjects.length === 0 && (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <FolderKanban className="w-16 h-16 mx-auto mb-4 text-[#64748B] opacity-50" />
-            <h3 className="text-xl font-semibold text-[#1E293B] mb-2">No Projects Found</h3>
-            <p className="text-[#64748B] mb-4">
-              {searchTerm ? "Try a different search term" : "Create your first project to get started"}
-            </p>
-            <Button className="bg-[#2563EB] hover:bg-[#1D4ED8]">
-              <Plus className="w-4 h-4 mr-2" />
-              New Project
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
