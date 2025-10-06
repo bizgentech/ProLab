@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { User } from "@/api/entities";
 import { Employee } from "@/api/entities";
 import { WorkOrder } from "@/api/entities";
@@ -24,6 +25,7 @@ import { Label } from "@/components/ui/label";
 
 export default function FieldTechApp() {
   const { logout } = useAuth();
+  const { location, error: gpsError, loading: gpsLoading, getCurrentLocation } = useGeolocation();
   const [currentUser, setCurrentUser] = useState(null);
   const [employee, setEmployee] = useState(null);
   const [myWorkOrders, setMyWorkOrders] = useState([]);
@@ -49,17 +51,14 @@ export default function FieldTechApp() {
       const user = await User.me();
       setCurrentUser(user);
       
-      // Find employee record by email
       const employees = await Employee.filter({ created_by: user.email });
       if (employees && employees.length > 0) {
         const emp = employees[0];
         setEmployee(emp);
         
-        // Load work orders assigned to this tech
         const orders = await WorkOrder.filter({ assigned_to: emp.full_name });
         setMyWorkOrders(orders);
         
-        // Load samples collected by this tech
         const allSamples = await Sample.list();
         const techSamples = allSamples.filter(s => s.collected_by === emp.full_name);
         setMySamples(techSamples);
@@ -96,21 +95,23 @@ export default function FieldTechApp() {
       work_order_id: selectedWO.wo_number,
       technician_id: employee.id,
       technician_name: employee.full_name,
-      test_number: 1, // This should be calculated
+      test_number: 1,
       station: testFormData.station,
       offset: testFormData.offset,
       depth: testFormData.depth,
       wet_density: parseFloat(testFormData.wet_density),
       dry_density: parseFloat(testFormData.dry_density),
       moisture_content: parseFloat(testFormData.moisture_content),
-      pass_fail: "Pass", // Auto-calculate based on specs
+      pass_fail: "Pass",
       notes: testFormData.notes,
-      status: "Completed"
+      status: "Completed",
+      gps_latitude: location?.latitude,
+      gps_longitude: location?.longitude,
+      gps_accuracy: location?.accuracy
     };
 
     await FieldTest.create(testData);
     
-    // Reset form
     setTestFormData({
       station: "",
       offset: "",
@@ -146,7 +147,6 @@ export default function FieldTechApp() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Mobile Header */}
       <header className="bg-white border-b border-[#E2E8F0] sticky top-0 z-50">
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
@@ -175,7 +175,6 @@ export default function FieldTechApp() {
             </Button>
           </div>
 
-          {/* Clock In/Out */}
           <div className="flex gap-2">
             {employee.current_status === "Off Duty" ? (
               <Button 
@@ -205,7 +204,6 @@ export default function FieldTechApp() {
         </div>
       </header>
 
-      {/* Stats Bar */}
       <div className="bg-white border-b border-[#E2E8F0] p-4">
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
@@ -225,7 +223,6 @@ export default function FieldTechApp() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="p-4 space-y-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
@@ -234,7 +231,6 @@ export default function FieldTechApp() {
             <TabsTrigger value="samples">Samples</TabsTrigger>
           </TabsList>
 
-          {/* Work Orders Tab */}
           <TabsContent value="work-orders" className="space-y-3 mt-4">
             {inProgressWOs.length === 0 ? (
               <Card>
@@ -302,7 +298,6 @@ export default function FieldTechApp() {
             )}
           </TabsContent>
 
-          {/* Test Entry Tab */}
           <TabsContent value="test-entry" className="space-y-4 mt-4">
             {!selectedWO ? (
               <Card>
@@ -327,7 +322,38 @@ export default function FieldTechApp() {
                 </CardHeader>
                 <CardContent className="p-4 space-y-4">
                   <div className="space-y-3">
-                    <h3 className="font-semibold text-[#1E293B]">Test Location</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-[#1E293B]">Test Location</h3>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={getCurrentLocation}
+                        disabled={gpsLoading}
+                        className="gap-2"
+                      >
+                        <Navigation className="w-4 h-4" />
+                        {gpsLoading ? 'Getting GPS...' : 'Get GPS'}
+                      </Button>
+                    </div>
+                    
+                    {location && (
+                      <div className="bg-[#10B981] bg-opacity-10 border border-[#10B981] rounded-lg p-3 text-sm">
+                        <p className="font-medium text-[#10B981] mb-1">GPS Captured</p>
+                        <p className="text-xs text-[#64748B]">
+                          {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                        </p>
+                        <p className="text-xs text-[#64748B]">
+                          Accuracy: {location.accuracy.toFixed(0)}m
+                        </p>
+                      </div>
+                    )}
+                    
+                    {gpsError && (
+                      <div className="bg-[#EF4444] bg-opacity-10 border border-[#EF4444] rounded-lg p-3 text-sm">
+                        <p className="text-[#EF4444]">GPS Error: {gpsError}</p>
+                      </div>
+                    )}
+                    
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <Label className="text-xs">Station</Label>
@@ -438,7 +464,6 @@ export default function FieldTechApp() {
             )}
           </TabsContent>
 
-          {/* Samples Tab */}
           <TabsContent value="samples" className="space-y-3 mt-4">
             {todaySamples.length === 0 ? (
               <Card>
@@ -495,7 +520,6 @@ export default function FieldTechApp() {
         </Tabs>
       </div>
 
-      {/* Bottom Navigation Aid */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E2E8F0] p-4">
         <div className="flex items-center justify-center gap-2 text-sm text-[#64748B]">
           <Phone className="w-4 h-4" />
