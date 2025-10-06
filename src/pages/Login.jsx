@@ -25,8 +25,14 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password, mode);
-      navigate('/');  // CORREGIDO: era '/dashboard'
+      const result = await login(formData.email, formData.password, mode);
+      
+      // Redirigir según el rol
+      if (result.user.role === 'field_technician') {
+        navigate('/FieldTechApp');
+      } else {
+        navigate('/Dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -38,8 +44,14 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login('', '', 'azure');
-      navigate('/');  // CORREGIDO: era '/dashboard'
+      const result = await login('', '', 'azure');
+      
+      // Redirigir según el rol
+      if (result.user.role === 'field_technician') {
+        navigate('/FieldTechApp');
+      } else {
+        navigate('/Dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Azure login failed');
     } finally {
