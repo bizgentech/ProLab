@@ -18,6 +18,10 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// TEMPORALMENTE DESHABILITADO - Reactivar cuando Laravel esté listo
+// El interceptor estaba haciendo logout automático en desarrollo
+// porque no hay backend real y cualquier error HTTP dispara 401
+/*
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -29,5 +33,6 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+*/
 
 export default apiClient;

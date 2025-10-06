@@ -26,7 +26,7 @@ export default function Login() {
 
     try {
       await login(formData.email, formData.password, mode);
-      navigate('/dashboard');
+      navigate('/');  // CORREGIDO: era '/dashboard'
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -39,7 +39,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login('', '', 'azure');
-      navigate('/dashboard');
+      navigate('/');  // CORREGIDO: era '/dashboard'
     } catch (err) {
       setError(err.message || 'Azure login failed');
     } finally {

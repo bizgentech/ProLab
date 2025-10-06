@@ -7,12 +7,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
-  }, []);
+ useEffect(() => {
+  // Check if user is already logged in
+  const currentUser = authService.getCurrentUser();
+  console.log('AuthContext cargó user:', currentUser);
+  setUser(currentUser);
+  setLoading(false);
+}, []);
 
   const login = async (email, password, mode = 'local') => {
     try {
