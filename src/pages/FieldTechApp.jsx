@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { User } from "@/api/entities";
 import { Employee } from "@/api/entities";
 import { WorkOrder } from "@/api/entities";
@@ -22,6 +23,7 @@ import {
 import { Label } from "@/components/ui/label";
 
 export default function FieldTechApp() {
+  const { logout } = useAuth();
   const [currentUser, setCurrentUser] = useState(null);
   const [employee, setEmployee] = useState(null);
   const [myWorkOrders, setMyWorkOrders] = useState([]);
@@ -162,8 +164,14 @@ export default function FieldTechApp() {
                 </div>
               </div>
             </div>
-            <Button variant="ghost" size="icon">
-              <Menu className="w-5 h-5" />
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={logout}
+              className="gap-1"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
             </Button>
           </div>
 

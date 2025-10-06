@@ -67,7 +67,7 @@ export default function Layout({ children, currentPageName }) {
   const loadEmployee = async () => {
     try {
       const employees = await Employee.filter({ created_by: currentUser.email });
-      if (employees && employees.length > 0 && employees[0].position === "Field Technician") {
+      if (employees && employees.length > 0) {
         setEmployee(employees[0]);
       }
     } catch (error) {
@@ -75,11 +75,8 @@ export default function Layout({ children, currentPageName }) {
     }
   };
 
-  // If user is a field technician and not already on the FieldTechApp page, redirect
-  if (employee && currentPageName !== "FieldTechApp") {
-    window.location.href = createPageUrl("FieldTechApp");
-    return null;
-  }
+  // ELIMINADO: El redirect automático que causaba el problema
+  // Login.jsx ya maneja la redirección basada en rol
 
   const toggleSubmenu = (title) => {
     setExpandedMenus(prev => ({

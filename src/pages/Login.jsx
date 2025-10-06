@@ -27,10 +27,18 @@ export default function Login() {
     try {
       const result = await login(formData.email, formData.password, mode);
       
+      console.log('=== LOGIN DEBUG ===');
+      console.log('Email:', formData.email);
+      console.log('Result:', result);
+      console.log('User role:', result.user.role);
+      console.log('Is field_technician?:', result.user.role === 'field_technician');
+      
       // Redirigir según el rol
       if (result.user.role === 'field_technician') {
+        console.log('→ Redirecting to FieldTechApp');
         navigate('/FieldTechApp');
       } else {
+        console.log('→ Redirecting to Dashboard');
         navigate('/Dashboard');
       }
     } catch (err) {
@@ -46,10 +54,16 @@ export default function Login() {
     try {
       const result = await login('', '', 'azure');
       
+      console.log('=== AZURE LOGIN DEBUG ===');
+      console.log('Result:', result);
+      console.log('User role:', result.user.role);
+      
       // Redirigir según el rol
       if (result.user.role === 'field_technician') {
+        console.log('→ Redirecting to FieldTechApp');
         navigate('/FieldTechApp');
       } else {
+        console.log('→ Redirecting to Dashboard');
         navigate('/Dashboard');
       }
     } catch (err) {
